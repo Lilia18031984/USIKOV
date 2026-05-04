@@ -1,538 +1,252 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import requests
 import json
 import os
 from datetime import datetime
 
-class MovieLibrary:
+class GitHubUserFinder:
     def __init__(self, root):
         self.root = root
-        self.root.title("Movie Library - Личная кинотека")
-        self.root.geometry("1100x700")
+        self.root.title("GitHub User Finder")
+        self.root.geometry("800x600")
         self.root.resizable(True, True)
 
-        # Файл для хранения фильмов
-        self.movies_file = "movies.json"
-        self.movies = self.load_movies()
-        
-        # Уникальные жанры
-        self.genres = self.get_unique_genres()
-        
+        # Файл для хранения избранного
+        self.favorites_file = "favorites.json"
+        self.favorites = self.load_favorites()
+
         # Создание интерфейса
         self.create_widgets()
-        
-        # Отображение всех фильмов
-        self.display_movies()
 
-    def load_movies(self):
-        """Загрузка фильмов из JSON файла"""
-        default_movies = [
-            {
-                "title": "Побег из Шоушенка",
-                "genre": "Драма",
-                "year": 1994,
-                "rating": 9.5,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Крёстный отец",
-                "genre": "Криминал",
-                "year": 1972,
-                "rating": 9.2,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Тёмный рыцарь",
-                "genre": "Боевик",
-                "year": 2008,
-                "rating": 9.0,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Криминальное чтиво",
-                "genre": "Криминал",
-                "year": 1994,
-                "rating": 8.9,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Властелин колец: Возвращение короля",
-                "genre": "Фэнтези",
-                "year": 2003,
-                "rating": 9.0,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Интерстеллар",
-                "genre": "Фантастика",
-                "year": 2014,
-                "rating": 8.6,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Начало",
-                "genre": "Фантастика",
-                "year": 2010,
-                "rating": 8.8,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            },
-            {
-                "title": "Бойцовский клуб",
-                "genre": "Триллер",
-                "year": 1999,
-                "rating": 8.8,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        ]
-        
-        if os.path.exists(self.movies_file):
-            try:
-                with open(self.movies_file, 'r', encoding='utf-8') as f:
-                    movies = json.load(f)
-                    if movies:
-                        return movies
-            except:
-                pass
-        
-        self.save_movies(default_movies)
-        return default_movies
-
-    def save_movies(self):
-        """Сохранение фильмов в JSON файл"""
-        with open(self.movies_file, 'w', encoding='utf-8') as f:
-            json.dump(self.movies, f, indent=4, ensure_ascii=False)
-
-    def get_unique_genres(self):
-        """Получение уникальных жанров"""
-        genres = sorted(set(movie["genre"] for movie in self.movies))
-        return ["Все"] + genres
+        # Загрузка избранных при старте
+        self.display_favorites()
 
     def create_widgets(self):
-        # Основной фрейм
-        main_frame = ttk.Frame(self.root, padding="15")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        # Верхняя панель поиска
+        search_frame = ttk.Frame(self.root, padding="10")
+        search_frame.pack(fill=tk.X)
 
-        # ==================== Левая панель - Добавление фильма ====================
-        left_frame = ttk.LabelFrame(main_frame, text="Добавить фильм", padding="15")
-        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 15))
+        ttk.Label(search_frame, text="Поиск пользователя GitHub:").pack(side=tk.LEFT, padx=5)
 
-        # Поле Название
-        ttk.Label(left_frame, text="Название:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
-        self.title_entry = ttk.Entry(left_frame, width=35, font=("Arial", 10))
-        self.title_entry.pack(fill=tk.X, pady=(0, 15))
+        self.search_entry = ttk.Entry(search_frame, width=40)
+        self.search_entry.pack(side=tk.LEFT, padx=5)
+        self.search_entry.bind("<Return>", lambda e: self.search_user())
 
-        # Поле Жанр
-        ttk.Label(left_frame, text="Жанр:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
-        self.genre_entry = ttk.Entry(left_frame, width=35, font=("Arial", 10))
-        self.genre_entry.pack(fill=tk.X, pady=(0, 15))
+        self.search_button = ttk.Button(search_frame, text="Искать", command=self.search_user)
+        self.search_button.pack(side=tk.LEFT, padx=5)
 
-        # Поле Год
-        ttk.Label(left_frame, text="Год выпуска:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
-        self.year_entry = ttk.Entry(left_frame, width=35, font=("Arial", 10))
-        self.year_entry.pack(fill=tk.X, pady=(0, 15))
+        # Кнопка показа избранных
+        self.show_favorites_btn = ttk.Button(search_frame, text="Показать избранных", command=self.display_favorites)
+        self.show_favorites_btn.pack(side=tk.LEFT, padx=5)
 
-        # Поле Рейтинг
-        ttk.Label(left_frame, text="Рейтинг (0-10):", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
-        self.rating_entry = ttk.Entry(left_frame, width=35, font=("Arial", 10))
-        self.rating_entry.pack(fill=tk.X, pady=(0, 20))
+        # Разделитель
+        ttk.Separator(self.root, orient='horizontal').pack(fill=tk.X, padx=10, pady=5)
 
-        # Кнопки
-        self.add_btn = ttk.Button(left_frame, text="➕ Добавить фильм", command=self.add_movie, width=33)
-        self.add_btn.pack(pady=(0, 10))
-        
-        self.clear_btn = ttk.Button(left_frame, text="🗑 Очистить поля", command=self.clear_fields, width=33)
-        self.clear_btn.pack()
+        # Основная область с двумя панелями
+        main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        main_paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Статистика
-        stats_frame = ttk.LabelFrame(left_frame, text="Статистика", padding="10")
-        stats_frame.pack(fill=tk.X, pady=(20, 0))
-        
-        self.total_label = ttk.Label(stats_frame, text="Фильмов: 0", font=("Arial", 10))
-        self.total_label.pack(anchor=tk.W, pady=2)
-        
-        self.avg_rating_label = ttk.Label(stats_frame, text="Средний рейтинг: 0", font=("Arial", 10))
-        self.avg_rating_label.pack(anchor=tk.W, pady=2)
-        
-        self.best_label = ttk.Label(stats_frame, text="Лучший рейтинг: 0", font=("Arial", 10))
-        self.best_label.pack(anchor=tk.W, pady=2)
+        # Левая панель - результаты поиска
+        left_frame = ttk.Frame(main_paned)
+        main_paned.add(left_frame, weight=1)
 
-        # ==================== Правая панель ====================
-        right_frame = ttk.Frame(main_frame)
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        ttk.Label(left_frame, text="Результаты поиска:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=5)
 
-        # Панель фильтрации
-        filter_frame = ttk.LabelFrame(right_frame, text="Фильтрация", padding="10")
-        filter_frame.pack(fill=tk.X, pady=(0, 15))
+        # Список результатов
+        self.results_listbox = tk.Listbox(left_frame, height=15)
+        self.results_listbox.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.results_listbox.bind("<<ListboxSelect>>", self.on_result_select)
 
-        # Фильтр по жанру
-        genre_filter_frame = ttk.Frame(filter_frame)
-        genre_filter_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        ttk.Label(genre_filter_frame, text="Жанр:").pack(side=tk.LEFT, padx=(0, 10))
-        self.genre_filter = ttk.Combobox(genre_filter_frame, values=self.genres, width=20, state="readonly")
-        self.genre_filter.set("Все")
-        self.genre_filter.pack(side=tk.LEFT)
-        self.genre_filter.bind("<<ComboboxSelected>>", lambda e: self.filter_movies())
+        # Правая панель - избранное
+        right_frame = ttk.Frame(main_paned)
+        main_paned.add(right_frame, weight=1)
 
-        # Фильтр по году
-        year_filter_frame = ttk.Frame(filter_frame)
-        year_filter_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        ttk.Label(year_filter_frame, text="Год от:").pack(side=tk.LEFT, padx=(0, 10))
-        self.year_from = ttk.Entry(year_filter_frame, width=10)
-        self.year_from.pack(side=tk.LEFT, padx=(0, 10))
-        
-        ttk.Label(year_filter_frame, text="до:").pack(side=tk.LEFT, padx=(0, 10))
-        self.year_to = ttk.Entry(year_filter_frame, width=10)
-        self.year_to.pack(side=tk.LEFT)
-        
-        self.apply_year_btn = ttk.Button(year_filter_frame, text="Применить", command=self.filter_movies)
-        self.apply_year_btn.pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(right_frame, text="Избранные пользователи:", font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=5)
 
-        # Кнопка сброса
-        self.reset_btn = ttk.Button(filter_frame, text="Сбросить фильтры", command=self.reset_filters)
-        self.reset_btn.pack(pady=(5, 0))
+        # Список избранных
+        self.favorites_listbox = tk.Listbox(right_frame, height=15)
+        self.favorites_listbox.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.favorites_listbox.bind("<<ListboxSelect>>", self.on_favorite_select)
 
-        # Таблица фильмов
-        table_frame = ttk.LabelFrame(right_frame, text="Список фильмов", padding="10")
-        table_frame.pack(fill=tk.BOTH, expand=True)
-
-        # Создание таблицы
-        columns = ("title", "genre", "year", "rating", "added_date")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
-        
-        self.tree.heading("title", text="Название")
-        self.tree.heading("genre", text="Жанр")
-        self.tree.heading("year", text="Год")
-        self.tree.heading("rating", text="Рейтинг")
-        self.tree.heading("added_date", text="Дата добавления")
-        
-        self.tree.column("title", width=300)
-        self.tree.column("genre", width=120)
-        self.tree.column("year", width=80)
-        self.tree.column("rating", width=80)
-        self.tree.column("added_date", width=150)
-        
-        # Скроллбары
-        scroll_y = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        scroll_x = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
-        self.tree.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
-        
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        scroll_y.grid(row=0, column=1, sticky="ns")
-        scroll_x.grid(row=1, column=0, sticky="ew")
-        
-        table_frame.grid_rowconfigure(0, weight=1)
-        table_frame.grid_columnconfigure(0, weight=1)
-        
         # Кнопки управления
         btn_frame = ttk.Frame(right_frame)
-        btn_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        self.delete_btn = ttk.Button(btn_frame, text="🗑 Удалить", command=self.delete_movie)
-        self.delete_btn.pack(side=tk.LEFT, padx=(0, 5))
-        
-        self.edit_btn = ttk.Button(btn_frame, text="✏ Редактировать", command=self.edit_movie)
-        self.edit_btn.pack(side=tk.LEFT)
-        
+        btn_frame.pack(fill=tk.X, pady=5)
+
+        self.add_favorite_btn = ttk.Button(btn_frame, text="★ Добавить в избранное", command=self.add_to_favorites)
+        self.add_favorite_btn.pack(side=tk.LEFT, padx=2)
+
+        self.remove_favorite_btn = ttk.Button(btn_frame, text="☆ Удалить из избранного", command=self.remove_from_favorites)
+        self.remove_favorite_btn.pack(side=tk.LEFT, padx=2)
+
+        # Нижняя панель с информацией о пользователе
+        info_frame = ttk.Frame(self.root, padding="10")
+        info_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(info_frame, text="Информация о пользователе:", font=("Arial", 10, "bold")).pack(anchor=tk.W)
+
+        self.user_info_text = tk.Text(info_frame, height=8, wrap=tk.WORD)
+        self.user_info_text.pack(fill=tk.BOTH, expand=True, pady=5)
+
         # Статусная строка
         self.status_var = tk.StringVar()
         self.status_var.set("Готов к работе")
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-        
-        # Двойной клик для редактирования
-        self.tree.bind("<Double-1>", lambda e: self.edit_movie())
-        
-        # Обновление статистики
-        self.update_stats()
 
-    def validate_year(self, year_str):
-        """Проверка года"""
+    def load_favorites(self):
+        """Загрузка избранных из JSON файла"""
+        if os.path.exists(self.favorites_file):
+            try:
+                with open(self.favorites_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                return []
+        return []
+
+    def save_favorites(self):
+        """Сохранение избранных в JSON файл"""
+        with open(self.favorites_file, 'w', encoding='utf-8') as f:
+            json.dump(self.favorites, f, indent=4, ensure_ascii=False)
+
+    def search_user(self):
+        """Поиск пользователя на GitHub"""
+        username = self.search_entry.get().strip()
+
+        # Проверка на пустое поле
+        if not username:
+            messagebox.showwarning("Ошибка", "Поле поиска не может быть пустым!")
+            self.status_var.set("Ошибка: поле поиска пустое")
+            return
+
+        self.status_var.set(f"Поиск пользователя '{username}'...")
+        self.results_listbox.delete(0, tk.END)
+
+        # Поиск пользователей через API GitHub
         try:
-            year = int(year_str)
-            current_year = datetime.now().year
-            if 1888 <= year <= current_year:
-                return True, year
-            return False, None
-        except ValueError:
-            return False, None
+            response = requests.get(f"https://api.github.com/search/users?q={username}", timeout=10)
 
-    def validate_rating(self, rating_str):
-        """Проверка рейтинга"""
+            if response.status_code == 200:
+                data = response.json()
+                users = data.get('items', [])
+
+                if users:
+                    for user in users:
+                        self.results_listbox.insert(tk.END, user['login'])
+                    self.status_var.set(f"Найдено {len(users)} пользователей")
+                else:
+                    self.status_var.set("Пользователи не найдены")
+                    messagebox.showinfo("Результат", "Пользователи не найдены")
+            else:
+                self.status_var.set(f"Ошибка API: {response.status_code}")
+                messagebox.showerror("Ошибка", f"Ошибка при запросе к API: {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            self.status_var.set("Ошибка соединения")
+            messagebox.showerror("Ошибка", f"Не удалось подключиться к GitHub API\n{str(e)}")
+
+    def on_result_select(self, event):
+        """Выбор пользователя из результатов поиска"""
+        selection = self.results_listbox.curselection()
+        if selection:
+            username = self.results_listbox.get(selection[0])
+            self.show_user_info(username)
+
+    def on_favorite_select(self, event):
+        """Выбор пользователя из избранного"""
+        selection = self.favorites_listbox.curselection()
+        if selection:
+            username = self.favorites_listbox.get(selection[0])
+            self.show_user_info(username)
+
+    def show_user_info(self, username):
+        """Отображение подробной информации о пользователе"""
+        self.status_var.set(f"Загрузка информации о {username}...")
+        self.user_info_text.delete(1.0, tk.END)
+
         try:
-            rating = float(rating_str)
-            if 0 <= rating <= 10:
-                return True, rating
-            return False, None
-        except ValueError:
-            return False, None
+            response = requests.get(f"https://api.github.com/users/{username}", timeout=10)
 
-    def add_movie(self):
-        """Добавление фильма"""
-        title = self.title_entry.get().strip()
-        genre = self.genre_entry.get().strip()
-        year_str = self.year_entry.get().strip()
-        rating_str = self.rating_entry.get().strip()
-        
-        # Валидация
-        if not title:
-            messagebox.showerror("Ошибка", "Введите название фильма!")
-            return
-        
-        if not genre:
-            messagebox.showerror("Ошибка", "Введите жанр!")
-            return
-        
-        valid_year, year = self.validate_year(year_str)
-        if not valid_year:
-            messagebox.showerror("Ошибка", "Год должен быть числом от 1888 до текущего!")
-            return
-        
-        valid_rating, rating = self.validate_rating(rating_str)
-        if not valid_rating:
-            messagebox.showerror("Ошибка", "Рейтинг должен быть числом от 0 до 10!")
-            return
-        
-        # Проверка дубликата
-        for movie in self.movies:
-            if movie["title"].lower() == title.lower() and movie["year"] == year:
-                if not messagebox.askyesno("Предупреждение", 
-                    f"Фильм '{title}' ({year}) уже существует. Добавить как отдельную запись?"):
-                    return
-        
-        # Добавление
-        movie = {
-            "title": title,
-            "genre": genre,
-            "year": year,
-            "rating": rating,
-            "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        
-        self.movies.append(movie)
-        self.save_movies()
-        self.update_genres()
-        self.display_movies()
-        self.update_stats()
-        self.clear_fields()
-        
-        self.status_var.set(f"Фильм '{title}' добавлен")
-        messagebox.showinfo("Успех", f"Фильм '{title}' добавлен!")
+            if response.status_code == 200:
+                user_data = response.json()
 
-    def display_movies(self, movies=None):
-        """Отображение фильмов в таблице"""
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        display_movies = movies if movies is not None else self.movies
-        
-        for movie in sorted(display_movies, key=lambda x: x["year"], reverse=True):
-            self.tree.insert("", tk.END, values=(
-                movie["title"],
-                movie["genre"],
-                movie["year"],
-                f"{movie['rating']:.1f}",
-                movie["added_date"]
-            ))
-
-    def filter_movies(self):
-        """Фильтрация фильмов"""
-        selected_genre = self.genre_filter.get()
-        year_from_str = self.year_from.get().strip()
-        year_to_str = self.year_to.get().strip()
-        
-        filtered = self.movies.copy()
-        
-        # Фильтр по жанру
-        if selected_genre != "Все":
-            filtered = [m for m in filtered if m["genre"] == selected_genre]
-        
-        # Фильтр по году
-        if year_from_str:
-            valid, year_from = self.validate_year(year_from_str)
-            if valid:
-                filtered = [m for m in filtered if m["year"] >= year_from]
+                info = f"""
+Имя пользователя: {user_data.get('login', 'Н/Д')}
+Полное имя: {user_data.get('name', 'Н/Д')}
+ID: {user_data.get('id', 'Н/Д')}
+Компания: {user_data.get('company', 'Н/Д')}
+Блог: {user_data.get('blog', 'Н/Д')}
+Локация: {user_data.get('location', 'Н/Д')}
+Email: {user_data.get('email', 'Н/Д')}
+Репозитории: {user_data.get('public_repos', 0)}
+Подписчики: {user_data.get('followers', 0)}
+Подписки: {user_data.get('following', 0)}
+Дата создания: {user_data.get('created_at', 'Н/Д')}
+Профиль: {user_data.get('html_url', 'Н/Д')}
+Био: {user_data.get('bio', 'Нет био')}
+                """
+                self.user_info_text.insert(1.0, info)
+                self.status_var.set(f"Информация о {username} загружена")
             else:
-                messagebox.showerror("Ошибка", "Неверный формат года 'от'!")
-                return
-        
-        if year_to_str:
-            valid, year_to = self.validate_year(year_to_str)
-            if valid:
-                filtered = [m for m in filtered if m["year"] <= year_to]
-            else:
-                messagebox.showerror("Ошибка", "Неверный формат года 'до'!")
-                return
-        
-        self.display_movies(filtered)
-        self.update_stats(filtered)
-        
-        filter_info = []
-        if selected_genre != "Все":
-            filter_info.append(f"жанр: {selected_genre}")
-        if year_from_str:
-            filter_info.append(f"год ≥ {year_from_str}")
-        if year_to_str:
-            filter_info.append(f"год ≤ {year_to_str}")
-        
-        if filter_info:
-            self.status_var.set(f"Найдено {len(filtered)} фильмов ({', '.join(filter_info)})")
-        else:
-            self.status_var.set(f"Всего фильмов: {len(filtered)}")
+                self.status_var.set(f"Ошибка загрузки информации о {username}")
 
-    def reset_filters(self):
-        """Сброс фильтров"""
-        self.genre_filter.set("Все")
-        self.year_from.delete(0, tk.END)
-        self.year_to.delete(0, tk.END)
-        self.display_movies()
-        self.update_stats()
-        self.status_var.set("Фильтры сброшены")
+        except requests.exceptions.RequestException as e:
+            self.status_var.set("Ошибка соединения")
+            self.user_info_text.insert(1.0, f"Ошибка загрузки: {str(e)}")
 
-    def update_stats(self, movies=None):
-        """Обновление статистики"""
-        if movies is None:
-            movies = self.movies
-        
-        total = len(movies)
-        self.total_label.config(text=f"Фильмов: {total}")
-        
-        if total > 0:
-            avg_rating = sum(m["rating"] for m in movies) / total
-            best_rating = max(m["rating"] for m in movies)
-            self.avg_rating_label.config(text=f"Средний рейтинг: {avg_rating:.2f}")
-            self.best_label.config(text=f"Лучший рейтинг: {best_rating:.1f}")
-        else:
-            self.avg_rating_label.config(text="Средний рейтинг: 0")
-            self.best_label.config(text="Лучший рейтинг: 0")
+    def add_to_favorites(self):
+        """Добавление выбранного пользователя в избранное"""
+        selection = self.results_listbox.curselection()
 
-    def update_genres(self):
-        """Обновление списка жанров"""
-        self.genres = self.get_unique_genres()
-        self.genre_filter['values'] = self.genres
-
-    def delete_movie(self):
-        """Удаление фильма"""
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Предупреждение", "Выберите фильм для удаления!")
+        if not selection:
+            messagebox.showwarning("Ошибка", "Сначала выберите пользователя из результатов поиска!")
             return
-        
-        item = self.tree.item(selected[0])
-        values = item['values']
-        
-        for i, movie in enumerate(self.movies):
-            if (movie["title"] == values[0] and movie["year"] == values[2]):
-                if messagebox.askyesno("Подтверждение", f"Удалить фильм '{movie['title']}' ({movie['year']})?"):
-                    del self.movies[i]
-                    self.save_movies()
-                    self.update_genres()
-                    self.display_movies()
-                    self.update_stats()
-                    self.status_var.set(f"Фильм '{movie['title']}' удалён")
-                    break
 
-    def edit_movie(self):
-        """Редактирование фильма"""
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("Предупреждение", "Выберите фильм для редактирования!")
+        username = self.results_listbox.get(selection[0])
+
+        # Проверка, не добавлен ли уже пользователь
+        if username in self.favorites:
+            messagebox.showinfo("Информация", f"Пользователь {username} уже в избранном!")
             return
-        
-        item = self.tree.item(selected[0])
-        values = item['values']
-        
-        for i, movie in enumerate(self.movies):
-            if movie["title"] == values[0] and movie["year"] == values[2]:
-                self.open_edit_window(movie, i)
-                break
 
-    def open_edit_window(self, movie, index):
-        """Окно редактирования"""
-        edit_window = tk.Toplevel(self.root)
-        edit_window.title("Редактирование фильма")
-        edit_window.geometry("400x400")
-        edit_window.resizable(False, False)
-        edit_window.transient(self.root)
-        edit_window.grab_set()
-        
-        ttk.Label(edit_window, text="Название:", font=("Arial", 10, "bold")).pack(pady=(15, 5))
-        title_edit = ttk.Entry(edit_window, width=40, font=("Arial", 10))
-        title_edit.insert(0, movie["title"])
-        title_edit.pack(pady=(0, 10))
-        
-        ttk.Label(edit_window, text="Жанр:", font=("Arial", 10, "bold")).pack(pady=(5, 5))
-        genre_edit = ttk.Entry(edit_window, width=40, font=("Arial", 10))
-        genre_edit.insert(0, movie["genre"])
-        genre_edit.pack(pady=(0, 10))
-        
-        ttk.Label(edit_window, text="Год:", font=("Arial", 10, "bold")).pack(pady=(5, 5))
-        year_edit = ttk.Entry(edit_window, width=40, font=("Arial", 10))
-        year_edit.insert(0, str(movie["year"]))
-        year_edit.pack(pady=(0, 10))
-        
-        ttk.Label(edit_window, text="Рейтинг (0-10):", font=("Arial", 10, "bold")).pack(pady=(5, 5))
-        rating_edit = ttk.Entry(edit_window, width=40, font=("Arial", 10))
-        rating_edit.insert(0, str(movie["rating"]))
-        rating_edit.pack(pady=(0, 20))
-        
-        def save():
-            new_title = title_edit.get().strip()
-            new_genre = genre_edit.get().strip()
-            new_year_str = year_edit.get().strip()
-            new_rating_str = rating_edit.get().strip()
-            
-            if not new_title:
-                messagebox.showerror("Ошибка", "Введите название!")
-                return
-            
-            if not new_genre:
-                messagebox.showerror("Ошибка", "Введите жанр!")
-                return
-            
-            valid_year, new_year = self.validate_year(new_year_str)
-            if not valid_year:
-                messagebox.showerror("Ошибка", "Неверный год!")
-                return
-            
-            valid_rating, new_rating = self.validate_rating(new_rating_str)
-            if not valid_rating:
-                messagebox.showerror("Ошибка", "Неверный рейтинг!")
-                return
-            
-            self.movies[index] = {
-                "title": new_title,
-                "genre": new_genre,
-                "year": new_year,
-                "rating": new_rating,
-                "added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            
-            self.save_movies()
-            self.update_genres()
-            self.display_movies()
-            self.update_stats()
-            edit_window.destroy()
-            self.status_var.set(f"Фильм '{new_title}' обновлён")
-            messagebox.showinfo("Успех", "Фильм обновлён!")
-        
-        ttk.Button(edit_window, text="💾 Сохранить", command=save).pack(pady=(10, 5))
-        ttk.Button(edit_window, text="❌ Отмена", command=edit_window.destroy).pack()
+        self.favorites.append(username)
+        self.save_favorites()
+        self.display_favorites()
+        self.status_var.set(f"Пользователь {username} добавлен в избранное")
+        messagebox.showinfo("Успех", f"Пользователь {username} добавлен в избранное!")
 
-    def clear_fields(self):
-        """Очистка полей"""
-        self.title_entry.delete(0, tk.END)
-        self.genre_entry.delete(0, tk.END)
-        self.year_entry.delete(0, tk.END)
-        self.rating_entry.delete(0, tk.END)
+    def remove_from_favorites(self):
+        """Удаление выбранного пользователя из избранного"""
+        selection = self.favorites_listbox.curselection()
+
+        if not selection:
+            messagebox.showwarning("Ошибка", "Сначала выберите пользователя из списка избранных!")
+            return
+
+        username = self.favorites_listbox.get(selection[0])
+        self.favorites.remove(username)
+        self.save_favorites()
+        self.display_favorites()
+        self.status_var.set(f"Пользователь {username} удалён из избранного")
+
+    def display_favorites(self):
+        """Отображение списка избранных пользователей"""
+        self.favorites_listbox.delete(0, tk.END)
+        for user in self.favorites:
+            self.favorites_listbox.insert(tk.END, user)
+
+        if self.favorites:
+            self.status_var.set(f"Избранных: {len(self.favorites)}")
+        else:
+            self.status_var.set("Нет избранных пользователей")
 
 def main():
     root = tk.Tk()
-    app = MovieLibrary(root)
+    app = GitHubUserFinder(root)
     root.mainloop()
 
 if __name__ == "__main__":
+    main()
     main()
     root = tk.Tk()
     app = ExpenseTracker(root)
