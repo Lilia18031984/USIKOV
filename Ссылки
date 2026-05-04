@@ -1,0 +1,20 @@
+
+---
+
+## Инструкция по работе с Git
+
+```bash
+# Инициализация репозитория
+git init
+
+# Добавление файлов
+git add main.py requirements.txt .gitignore README.md
+
+# Создание коммита
+git commit -m "Initial commit: GitHub User Finder application"
+
+# Добавление удалённого репозитория (замените URL на ваш)
+git remote add origin https://github.com/your-username/github-user-finder.git
+
+# Отправка изменений
+git push -u origin main
