@@ -4,9 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-*.pyc
-*.pyo
-*.pyd
 
 # Virtual Environment
 venv/
@@ -14,7 +11,6 @@ env/
 ENV/
 env.bak/
 venv.bak/
-.venv/
 
 # IDE
 .vscode/
@@ -22,15 +18,11 @@ venv.bak/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Project specific
-movies.json
+favorites.json
 *.log
-*.db
-*.sqlite
 
 # OS
 .DS_Store
 Thumbs.db
-desktop.ini
