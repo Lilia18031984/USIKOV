@@ -1,6 +1,6 @@
-expense-tracker/
+movie-library/
 ├── main.py              # Основной код приложения
-├── expenses.json        # Файл с расходами (создаётся автоматически)
+├── movies.json          # Файл с фильмами (создаётся автоматически)
 ├── .gitignore           # Игнорируемые файлы
 ├── README.md            # Документация
-└── requirements.txt     # Зависимости (только для документации)
+└── requirements.txt     # Зависимости
