@@ -1,6 +1,6 @@
-movie-library/
+github-user-finder/
 ├── main.py              # Основной код приложения
-├── movies.json          # Файл с фильмами (создаётся автоматически)
+├── favorites.json       # Файл с избранными пользователями (создаётся автоматически)
 ├── .gitignore           # Игнорируемые файлы
 ├── README.md            # Документация
 └── requirements.txt     # Зависимости
