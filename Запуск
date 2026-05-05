@@ -1,0 +1,6 @@
+# Клонирование репозитория
+git clone https://github.com/ваш_логин/github-user-finder.git
+cd github-user-finder
+
+# Запуск программы
+python main.py
