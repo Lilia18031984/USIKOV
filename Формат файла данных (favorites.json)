@@ -1,0 +1,14 @@
+[
+    {
+        "username": "octocat",
+        "name": "The Octocat",
+        "avatar_url": "https://avatars.githubusercontent.com/u/583231?v=4",
+        "added_date": "2024-01-15 14:30:25"
+    },
+    {
+        "username": "torvalds",
+        "name": "Linus Torvalds",
+        "avatar_url": "https://avatars.githubusercontent.com/u/1024025?v=4",
+        "added_date": "2024-01-15 14:32:10"
+    }
+]
