@@ -1,0 +1,26 @@
+
+## 4. Инструкция по работе с Git
+
+```bash
+# 1. Инициализация репозитория
+git init
+
+# 2. Добавление файлов в отслеживание
+git add .
+
+# 3. Первый коммит
+git commit -m "Initial commit: GitHub User Finder app"
+
+# 4. Добавление удалённого репозитория
+git remote add origin https://github.com/ваш_логин/github-user-finder.git
+
+# 5. Переименование ветки (если необходимо)
+git branch -M main
+
+# 6. Отправка на GitHub
+git push -u origin main
+
+# 7. Последующие изменения
+git add .
+git commit -m "Add: детальная информация о пользователе"
+git push
